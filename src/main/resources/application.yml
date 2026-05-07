@@ -1,0 +1,117 @@
+spring:
+  application:
+    name: bacp
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jackson:
+    default-property-inclusion: non_null
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+server:
+  port: ${BACP_SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: io.github.wahhh.bacp.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,env,loggers
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+  default-produces-media-type: application/json
+
+bacp:
+  metrics:
+    chain-poll-ms: 30000
+  security:
+    jwt:
+      secret: ${BACP_JWT_SECRET:dev-only-jwt-secret-please-change-in-production-environment-32+}
+      access-token-ttl-seconds: ${BACP_JWT_ACCESS_TTL:3600}
+      refresh-token-ttl-seconds: ${BACP_JWT_REFRESH_TTL:604800}
+      issuer: bacp
+      audience: bacp-api
+    login:
+      max-fail-count: 5
+      lock-minutes: 30
+    admin-ip-whitelist: ${BACP_ADMIN_IP_WHITELIST:127.0.0.1,0:0:0:0:0:0:0:1}
+    request-signing:
+      enabled: ${BACP_REQ_SIGN_ENABLED:false}
+      ttl-seconds: 300
+  crypto:
+    master-key: ${BACP_CRYPTO_MASTER_KEY:dev-only-32byte-master-key-CHANGE!}
+  ratelimit:
+    default-capacity: 100
+    default-refill-per-sec: 50
+  custody:
+    default-confirmations: 12
+    withdraw-min-amount: 0.0001
+    withdraw-max-amount: 1000
+    chains:
+      ethereum:
+        rpc-url: ${BACP_ETH_RPC_URL:https://eth-sepolia.g.alchemy.com/v2/demo}
+        chain-id: 11155111
+      bsc:
+        rpc-url: ${BACP_BSC_RPC_URL:https://data-seed-prebsc-1-s1.binance.org:8545}
+        chain-id: 97
+      polygon:
+        rpc-url: ${BACP_POLYGON_RPC_URL:https://rpc-amoy.polygon.technology}
+        chain-id: 80002
+  risk:
+    large-amount-threshold: 10000
+    frequency-window-seconds: 60
+    frequency-max-count: 20
+  alert:
+    mail:
+      enabled: false
+      to: ops@example.com
+    dingtalk:
+      enabled: false
+      webhook: ""
+    wechat-work:
+      enabled: false
+      webhook: ""

@@ -1,0 +1,47 @@
+package io.github.wahhh.bacp.controller.admin;
+
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import io.github.wahhh.bacp.common.result.PageResult;
+import io.github.wahhh.bacp.common.result.Result;
+import io.github.wahhh.bacp.entity.SysOperationLog;
+import io.github.wahhh.bacp.mapper.SysOperationLogMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Operator audit trail queries (populated by {@link io.github.wahhh.bacp.common.audit.OperationLogAspect}).
+ */
+@Tag(name = "Admin — Operation logs")
+@RestController
+@RequestMapping("/api/v1/admin/operation-logs")
+@RequiredArgsConstructor
+public class OperationLogAdminController {
+
+    private final SysOperationLogMapper sysOperationLogMapper;
+
+    /**
+     * Pages operation logs newest-first.
+     *
+     * @param current page index (1-based)
+     * @param size    page size
+     * @return audit rows
+     */
+    @Operation(summary = "Page operation logs")
+    @GetMapping
+    @PreAuthorize("hasAuthority('oplog:query')")
+    public Result<PageResult<SysOperationLog>> page(
+            @RequestParam(defaultValue = "1") long current,
+            @RequestParam(defaultValue = "20") long size) {
+        Page<SysOperationLog> page = new Page<>(current, size);
+        Page<SysOperationLog> data = sysOperationLogMapper.selectPage(page,
+                Wrappers.<SysOperationLog>lambdaQuery().orderByDesc(SysOperationLog::getCreatedAt));
+        return Result.ok(PageResult.of(data));
+    }
+}

@@ -1,0 +1,141 @@
+{
+  "uid": "bacp-business",
+  "title": "BACP / Business metrics",
+  "tags": ["bacp", "business"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "annotations": {"list": []},
+  "templating": {"list": []},
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "bacp_tx_total rate (by direction)",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "sum by (direction) (rate(bacp_tx_total[5m]))",
+          "legendFormat": "{{direction}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "ops", "custom": {"drawStyle": "line", "fillOpacity": 18, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "bacp_tx_total rate (by chain)",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "sum by (chain) (rate(bacp_tx_total[5m]))",
+          "legendFormat": "{{chain}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "ops", "custom": {"drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "bacp_risk_alert_total",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "sum by (rule) (rate(bacp_risk_alert_total[5m]))",
+          "legendFormat": "{{rule}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "ops", "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "bacp_business_operation_total",
+      "description": "Audit aspect counter — tag layout follows Micrometer registration.",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "topk(10, sum by (module, action, result) (rate(bacp_business_operation_total[10m])))",
+          "legendFormat": "{{module}} / {{action}} ({{result}})",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "ops", "custom": {"drawStyle": "line", "fillOpacity": 12, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "bacp_login_total (optional custom metric)",
+      "description": "Placeholder series — wire a Counter in AuthService when available. Fallback shows auth endpoint traffic from HTTP metrics.",
+      "gridPos": {"h": 9, "w": 12, "x": 0, "y": 17},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "rate(bacp_login_total[5m])",
+          "legendFormat": "bacp_login_total (if exported)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{uri=~\"/api/v1/auth/login\"}[5m]))",
+          "legendFormat": "HTTP /api/v1/auth/login",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "reqps", "custom": {"drawStyle": "line", "fillOpacity": 15, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "bacp_chain_head_block (optional gauges)",
+      "description": "Expect tags like chain=ethereum|bsc when instrumented; panel stays valid with no data until gauges exist.",
+      "gridPos": {"h": 9, "w": 12, "x": 12, "y": 17},
+      "datasource": {"type": "prometheus", "uid": "bacp-prom"},
+      "targets": [
+        {
+          "expr": "bacp_chain_head_block",
+          "legendFormat": "{{chain}} head",
+          "refId": "A"
+        },
+        {
+          "expr": "max_over_time(bacp_chain_head_block[1h]) - min_over_time(bacp_chain_head_block[1h])",
+          "legendFormat": "{{chain}} drift (1h)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "none", "custom": {"drawStyle": "line", "fillOpacity": 10, "lineWidth": 1}},
+        "overrides": []
+      },
+      "options": {"legend": {"displayMode": "table", "placement": "bottom"}, "tooltip": {"mode": "multi"}}
+    }
+  ]
+}

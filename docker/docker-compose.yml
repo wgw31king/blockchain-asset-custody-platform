@@ -1,0 +1,162 @@
+# BACP local / demo stack. Run from repo root:
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# Services: MySQL (schema init), Redis, RabbitMQ, BACP app, Prometheus, Grafana.
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: bacp-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${BACP_MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${BACP_MYSQL_DB:-bacp}
+      MYSQL_USER: ${BACP_MYSQL_USER:-bacp}
+      MYSQL_PASSWORD: ${BACP_MYSQL_PASSWORD:-bacp}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../sql/bacp_init.sql:/docker-entrypoint-initdb.d/01-bacp_init.sql:ro
+    ports:
+      - "${BACP_MYSQL_BIND:-3306}:3306"
+    networks:
+      - bacp-net
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: bacp-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${BACP_REDIS_BIND:-6379}:6379"
+    networks:
+      - bacp-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: bacp-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${BACP_RMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${BACP_RMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "${BACP_RMQ_BIND:-5672}:5672"
+      - "${BACP_RMQ_MGMT_BIND:-15672}:15672"
+    networks:
+      - bacp-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  bacp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: bacp:${BACP_IMAGE_TAG:-local}
+    container_name: bacp-app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      BACP_SERVER_PORT: ${BACP_SERVER_PORT:-8080}
+      BACP_MYSQL_HOST: mysql
+      BACP_MYSQL_PORT: "3306"
+      BACP_MYSQL_DB: ${BACP_MYSQL_DB:-bacp}
+      BACP_MYSQL_USER: ${BACP_MYSQL_USER:-bacp}
+      BACP_MYSQL_PASSWORD: ${BACP_MYSQL_PASSWORD:-bacp}
+      BACP_REDIS_HOST: redis
+      BACP_REDIS_PORT: "6379"
+      BACP_REDIS_PASSWORD: ${BACP_REDIS_PASSWORD:-}
+      BACP_REDIS_DB: ${BACP_REDIS_DB:-0}
+      BACP_RMQ_HOST: rabbitmq
+      BACP_RMQ_PORT: "5672"
+      BACP_RMQ_USER: ${BACP_RMQ_USER:-guest}
+      BACP_RMQ_PASSWORD: ${BACP_RMQ_PASSWORD:-guest}
+      BACP_JWT_SECRET: ${BACP_JWT_SECRET:-dev-only-jwt-secret-please-change-in-production-environment-32chars-min}
+      BACP_CRYPTO_MASTER_KEY: ${BACP_CRYPTO_MASTER_KEY:-dev-only-32byte-master-key-CHANGE!}
+      BACP_ADMIN_IP_WHITELIST: ${BACP_ADMIN_IP_WHITELIST:-127.0.0.1,0:0:0:0:0:0:0:1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+    ports:
+      - "${BACP_APP_BIND:-8080}:8080"
+    networks:
+      - bacp-net
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health/liveness"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: bacp-prometheus
+    restart: unless-stopped
+    depends_on:
+      bacp:
+        condition: service_healthy
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${BACP_PROMETHEUS_BIND:-9090}:9090"
+    networks:
+      - bacp-net
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: bacp-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_HTTP_PORT: "3000"
+    volumes:
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "${BACP_GRAFANA_BIND:-3000}:3000"
+    networks:
+      - bacp-net
+
+networks:
+  bacp-net:
+    driver: bridge
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:

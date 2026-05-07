@@ -1,0 +1,38 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${BACP_MYSQL_HOST:127.0.0.1}:${BACP_MYSQL_PORT:3306}/${BACP_MYSQL_DB:bacp}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${BACP_MYSQL_USER:bacp}
+    password: ${BACP_MYSQL_PASSWORD:bacp}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  data:
+    redis:
+      host: ${BACP_REDIS_HOST:127.0.0.1}
+      port: ${BACP_REDIS_PORT:6379}
+      password: ${BACP_REDIS_PASSWORD:}
+      database: ${BACP_REDIS_DB:0}
+      timeout: 5s
+  rabbitmq:
+    host: ${BACP_RMQ_HOST:127.0.0.1}
+    port: ${BACP_RMQ_PORT:5672}
+    username: ${BACP_RMQ_USER:guest}
+    password: ${BACP_RMQ_PASSWORD:guest}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 10
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 2s
+
+logging:
+  level:
+    root: INFO
+    io.github.wahhh.bacp: DEBUG
+    org.springframework.security: INFO

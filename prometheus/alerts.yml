@@ -1,0 +1,97 @@
+# Recording & alerting rules for BACP JVM, HTTP, and custom counters.
+# Tune thresholds for your SLOs; some expressions are defensive placeholders.
+
+groups:
+  - name: bacp-jvm
+    rules:
+      - alert: BacpJvmHeapUsageHigh
+        expr: |
+          (
+            sum without (id) (jvm_memory_used_bytes{area="heap"})
+            /
+            clamp_min(
+              sum without (id) (
+                (jvm_memory_max_bytes{area="heap"} > bool 0) * jvm_memory_max_bytes{area="heap"}
+              ),
+              1
+            )
+          ) > 0.88
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP JVM heap usage high ({{ $labels.instance }})"
+          description: "Aggregate heap used / max (pools with max>0 only) exceeded 88% for 5m."
+
+      - alert: BacpJvmGcPauseElevated
+        expr: |
+          rate(jvm_gc_pause_seconds_sum[5m]) > 0.25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP GC pause time elevated"
+          description: "GC pause seconds per second > 0.25 over 5m (tune for your workload)."
+
+      - alert: BacpJvmNonHeapGrowing
+        expr: |
+          rate(jvm_memory_used_bytes{area="nonheap"}[15m]) > 1048576
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "BACP non-heap memory rising steadily"
+          description: "Non-heap used increasing > 1MiB/s over 15m — investigate metaspace / class loaders."
+
+  - name: bacp-http
+    rules:
+      - alert: BacpHttp5xxRate
+        expr: |
+          sum by (application, instance, uri, method) (
+            rate(http_server_requests_seconds_count{status=~"5.."}[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BACP HTTP 5xx rate high"
+          description: "More than 0.1 req/s with 5xx on {{ $labels.method }} {{ $labels.uri }}."
+
+      - alert: BacpHttpLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, uri, method, application) (
+              rate(http_server_requests_seconds_bucket{status!~"5.."}[5m])
+            )
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP HTTP p95 latency high"
+          description: "p95 > 2s for {{ $labels.method }} {{ $labels.uri }} (successful responses)."
+
+  - name: bacp-business-metrics
+    rules:
+      # Optional custom counter — exists in GlobalExceptionHandler as bacp_api_errors_total
+      - alert: BacpApiErrorsBurst
+        expr: |
+          increase(bacp_api_errors_total[10m]) > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP API error counter burst"
+          description: "bacp_api_errors_total increased by >50 in 10m — verify upstream / validation."
+
+      # Placeholder: define bacp_api_errors_total_alternative using HTTP 4xx/5xx if custom metric absent
+      - alert: BacpHttpClientOrServerErrorsRate
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"4..|5.."}[5m])) by (application, instance) > 5
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "BACP elevated HTTP 4xx/5xx throughput"
+          description: "Aggregate client/server error rate > 5 rps — correlate with logs."
