@@ -22,9 +22,16 @@ jobs:
       - name: Maven verify
         run: mvn -B verify
 
-      - name: Upload JaCoCo HTML report
+      - name: Upload JaCoCo gate report (CI threshold bundle)
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: jacoco-report
-          path: target/site/jacoco/
+          name: jacoco-report-gate
+          path: target/site/jacoco-gate/
+
+      - name: Upload JaCoCo full report (baseline excludes only)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report-full
+          path: target/site/jacoco-full/

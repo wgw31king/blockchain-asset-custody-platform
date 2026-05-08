@@ -30,7 +30,21 @@
         <springdoc.version>2.3.0</springdoc.version>
         <bouncycastle.version>1.78.1</bouncycastle.version>
         <jacoco.minimum.line>0.60</jacoco.minimum.line>
+        <jacoco.minimum.branch>0.45</jacoco.minimum.branch>
+        <testcontainers.version>1.20.4</testcontainers.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Spring Boot Web / Validation / Actuator / Security / AMQP / Mail -->
@@ -171,6 +185,21 @@
             <scope>test</scope>
             <optional>true</optional>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -220,45 +249,60 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
-                <configuration>
-                    <excludes>
-                        <exclude>**/entity/**</exclude>
-                        <exclude>**/dto/**</exclude>
-                        <exclude>**/vo/**</exclude>
-                        <exclude>**/BACPApplication*</exclude>
-                        <exclude>**/config/**</exclude>
-                        <exclude>**/*MapperImpl*</exclude>
-                        <!-- Integration-heavy packages: covered manually / in staging; keeps JaCoCo gate meaningful for core logic -->
-                        <exclude>**/bootstrap/**</exclude>
-                        <exclude>**/listener/**</exclude>
-                        <exclude>**/common/audit/**</exclude>
-                        <exclude>**/common/web/**</exclude>
-                        <exclude>**/custody/spi/**</exclude>
-                        <exclude>**/controller/custody/**</exclude>
-                        <exclude>**/controller/trade/**</exclude>
-                        <exclude>**/controller/monitor/**</exclude>
-                        <exclude>**/controller/admin/UserAdminController*</exclude>
-                        <exclude>**/controller/admin/RoleAdminController*</exclude>
-                        <exclude>**/controller/admin/DashboardAdminController*</exclude>
-                        <exclude>**/controller/admin/ChainNodeAdminController*</exclude>
-                        <exclude>**/controller/admin/CurrencyAdminController*</exclude>
-                        <exclude>**/controller/admin/SysParamAdminController*</exclude>
-                        <exclude>**/service/impl/DepositFacadeImpl*</exclude>
-                        <exclude>**/service/impl/WithdrawServiceImpl*</exclude>
-                    </excludes>
-                </configuration>
                 <executions>
                     <execution>
+                        <id>prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
                     <execution>
-                        <id>report</id>
+                        <id>report-gate</id>
                         <phase>verify</phase>
                         <goals>
                             <goal>report</goal>
                         </goals>
+                        <configuration>
+                            <outputDirectory>${project.reporting.outputDirectory}/jacoco-gate</outputDirectory>
+                            <excludes>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/vo/**</exclude>
+                                <exclude>**/BACPApplication*</exclude>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/common/constant/**</exclude>
+                                <exclude>**/*MapperImpl*</exclude>
+                                <exclude>**/bootstrap/**</exclude>
+                                <exclude>**/listener/**</exclude>
+                                <exclude>**/common/audit/**</exclude>
+                                <exclude>**/common/web/**</exclude>
+                                <exclude>**/custody/spi/**</exclude>
+                                <exclude>**/controller/custody/**</exclude>
+                                <exclude>**/controller/trade/**</exclude>
+                                <exclude>**/controller/monitor/**</exclude>
+                                <exclude>**/service/impl/DepositFacadeImpl*</exclude>
+                                <exclude>**/service/impl/WithdrawServiceImpl*</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>report-full</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.reporting.outputDirectory}/jacoco-full</outputDirectory>
+                            <excludes>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/vo/**</exclude>
+                                <exclude>**/BACPApplication*</exclude>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/common/constant/**</exclude>
+                                <exclude>**/*MapperImpl*</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
@@ -267,6 +311,25 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
+                            <excludes>
+                                <exclude>**/entity/**</exclude>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/vo/**</exclude>
+                                <exclude>**/BACPApplication*</exclude>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/common/constant/**</exclude>
+                                <exclude>**/*MapperImpl*</exclude>
+                                <exclude>**/bootstrap/**</exclude>
+                                <exclude>**/listener/**</exclude>
+                                <exclude>**/common/audit/**</exclude>
+                                <exclude>**/common/web/**</exclude>
+                                <exclude>**/custody/spi/**</exclude>
+                                <exclude>**/controller/custody/**</exclude>
+                                <exclude>**/controller/trade/**</exclude>
+                                <exclude>**/controller/monitor/**</exclude>
+                                <exclude>**/service/impl/DepositFacadeImpl*</exclude>
+                                <exclude>**/service/impl/WithdrawServiceImpl*</exclude>
+                            </excludes>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
@@ -275,6 +338,11 @@
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>${jacoco.minimum.line}</minimum>
+                                        </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>${jacoco.minimum.branch}</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
