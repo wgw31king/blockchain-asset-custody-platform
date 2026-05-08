@@ -9,6 +9,7 @@ import io.github.wahhh.bacp.config.properties.BacpSecurityProperties;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -18,7 +19,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  *
  * @author wahhh
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = MailSenderAutoConfiguration.class)
 @EnableAsync
 @EnableScheduling
 @EnableConfigurationProperties({

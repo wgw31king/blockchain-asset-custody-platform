@@ -105,13 +105,31 @@ bacp:
     large-amount-threshold: 10000
     frequency-window-seconds: 60
     frequency-max-count: 20
+  # Operational alerts: channels off by default; configure routing per AlertLevel when enabling.
   alert:
     mail:
       enabled: false
-      to: ops@example.com
+      host: ""
+      port: 587
+      username: ""
+      password: ${BACP_ALERT_MAIL_PASSWORD:}
+      from: ""
+      to: ""
+      ssl: false
+      start-tls: true
     dingtalk:
       enabled: false
       webhook: ""
     wechat-work:
       enabled: false
       webhook: ""
+      message-format: markdown
+    routing:
+      info: []
+      warn: []
+      error: []
+      fatal: []
+    throttle:
+      enabled: true
+      window-seconds: 60
+      max-per-window: 30
