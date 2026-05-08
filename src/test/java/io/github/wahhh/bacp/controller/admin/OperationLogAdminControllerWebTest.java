@@ -3,6 +3,7 @@ package io.github.wahhh.bacp.controller.admin;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.wahhh.bacp.entity.SysOperationLog;
 import io.github.wahhh.bacp.mapper.SysOperationLogMapper;
+import io.github.wahhh.bacp.testsupport.GlobalExceptionHandlerFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -19,6 +20,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class OperationLogAdminControllerWebTest {
 
+    /**
+     * 场景：分页返回操作审计日志。
+     */
     @Test
     void pageReturnsLogs() throws Exception {
         SysOperationLogMapper mapper = mock(SysOperationLogMapper.class);
@@ -31,7 +35,9 @@ class OperationLogAdminControllerWebTest {
         data.setTotal(1);
         when(mapper.selectPage(any(Page.class), any())).thenReturn(data);
 
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new OperationLogAdminController(mapper)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new OperationLogAdminController(mapper))
+                .setControllerAdvice(GlobalExceptionHandlerFactory.create())
+                .build();
         mvc.perform(get("/api/v1/admin/operation-logs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.records[0].username").value("admin"));

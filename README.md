@@ -61,7 +61,25 @@ Copy `.env.example` when wiring CI or Compose overrides.
 mvn -B clean verify
 ```
 
-JaCoCo **line** gate is **≥ 60%** on a **focused bundle**: entity/DTO/vo/config/bootstrap/listeners/MQ consumers/large admin CRUD controllers and similar integration surfaces are excluded so the gate reflects **domain services, security helpers, custody RPC registry, risk, trade matcher, and REST slices under test**. See `pom.xml` (`jacoco-maven-plugin` `<excludes>`).
+**Docker**: `TcAdminAndRiskIntegrationTest` uses Testcontainers (**MySQL 8** + **Redis 7**). Running `mvn verify` locally requires an available Docker daemon (GitHub Actions `ubuntu-latest` satisfies this).
+
+Unit and slice tests use **JUnit 5**, **Mockito**, and **standalone MockMvc** (admin controllers + `GlobalExceptionHandler`). Integration tests use **`@SpringBootTest`** + **`@AutoConfigureMockMvc`** + **`@WithMockUser`** with profiles `test` + `tc` (`application-tc.yml`, `AbstractTestcontainersIntegrationTest`).
+
+### JaCoCo: gate vs full
+
+Maven `verify` generates two HTML bundles:
+
+| Report | Location | Role |
+|--------|----------|------|
+| **Gate (门禁版)** | `target/site/jacoco-gate/index.html` | Same exclude set as `jacoco:check`. CI must pass **line ≥ 60%** and **branch ≥ 45%** (`jacoco.minimum.line` / `jacoco.minimum.branch` in `pom.xml`). Still excludes integration-heavy packages (bootstrap, listeners, custody/trade/monitor controllers, deposit/withdraw facades, audit/web SPI, etc.). |
+| **Full (全量版)** | `target/site/jacoco-full/index.html` | **Baseline excludes only**: `entity`, `dto`, `vo`, `**/BACPApplication*`, `**/config/**`, `**/common/constant/**`, `**/*MapperImpl*`. Use this artifact for **全量统计** and roadmap tracking. |
+
+**Published percentages**: use the latest CI artifacts **`jacoco-report-gate`** and **`jacoco-report-full`** (`index.html` inside each); refresh after merges instead of hard-coding ratios in docs.
+
+### Follow-up coverage plan
+
+1. Add tests for `WithdrawServiceImpl` / `DepositFacadeImpl`, then drop their gate excludes in `jacoco-maven-plugin`.
+2. Cover `bootstrap/**`, `listener/**`, `controller/custody/**`, `controller/trade/**`, `controller/monitor/**`, then remove those gate excludes step by step while keeping thresholds realistic.
 
 ## Repository layout
 
@@ -76,7 +94,7 @@ JaCoCo **line** gate is **≥ 60%** on a **focused bundle**: entity/DTO/vo/confi
 
 ## CI
 
-GitHub Actions runs `mvn -B verify` on JDK 21 and uploads the JaCoCo HTML report as an artifact (see `.github/workflows/ci.yml`).
+GitHub Actions runs `mvn -B verify` on JDK 21 and uploads **both** JaCoCo HTML bundles: **`jacoco-report-gate`** and **`jacoco-report-full`** (see `.github/workflows/ci.yml`).
 
 ## License
 

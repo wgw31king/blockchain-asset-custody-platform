@@ -3,6 +3,7 @@ package io.github.wahhh.bacp.controller.admin;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.github.wahhh.bacp.entity.SysPermission;
 import io.github.wahhh.bacp.mapper.SysPermissionMapper;
+import io.github.wahhh.bacp.testsupport.GlobalExceptionHandlerFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -18,6 +19,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class PermissionAdminControllerWebTest {
 
+    /**
+     * 场景：分页查询权限字典成功。
+     */
     @Test
     void pageReturnsRecords() throws Exception {
         SysPermissionMapper mapper = mock(SysPermissionMapper.class);
@@ -29,7 +33,9 @@ class PermissionAdminControllerWebTest {
         data.setTotal(1);
         when(mapper.selectPage(any(Page.class), any())).thenReturn(data);
 
-        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PermissionAdminController(mapper)).build();
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new PermissionAdminController(mapper))
+                .setControllerAdvice(GlobalExceptionHandlerFactory.create())
+                .build();
         mvc.perform(get("/api/v1/admin/permissions").param("current", "1").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.total").value(1))
