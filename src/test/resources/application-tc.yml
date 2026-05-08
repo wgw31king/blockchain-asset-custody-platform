@@ -1,0 +1,47 @@
+# Testcontainers profile: real MySQL + Redis (used with abstract integration base).
+spring:
+  task:
+    scheduling:
+      enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://127.0.0.1:3306/bacp
+    username: tc
+    password: tc
+  sql:
+    init:
+      mode: never
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+
+mybatis-plus:
+  configuration:
+    database-id: mysql
+
+logging:
+  level:
+    root: WARN
+    io.github.wahhh.bacp: INFO
+
+bacp:
+  security:
+    jwt:
+      secret: test-jwt-secret-must-be-at-least-32-bytes-long!!
+      access-token-ttl-seconds: 3600
+      refresh-token-ttl-seconds: 604800
+      issuer: bacp-test
+      audience: bacp-api-test
+    admin-ip-whitelist: 127.0.0.1,0:0:0:0:0:0:0:1
+    request-signing:
+      enabled: false
+  crypto:
+    master-key: test-master-key-32bytes-minimum!!
