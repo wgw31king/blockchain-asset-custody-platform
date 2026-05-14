@@ -1,0 +1,8 @@
+# Full-stack E2E (Testcontainers MySQL + Redis + RabbitMQ). Loaded after test/tc so this wins for conflicting keys.
+spring:
+  autoconfigure:
+    exclude: []
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: true

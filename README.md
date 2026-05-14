@@ -4,14 +4,15 @@ Production-style Spring Boot backend for **custodied wallets**, **spot trading (
 
 ## Requirements
 
-- **JDK 21** (Temurin recommended)
+- **JDK 17** (Temurin recommended)
 - **Maven 3.9+**
 - Optional stack via Docker: MySQL 8, Redis 7, RabbitMQ 3.12 (see Compose below)
+- **Docker** **29.4.3** or newer (build `055a478ea9` validated locally). Testcontainers needs a daemon whose API is **≥ 1.40** (older Docker clients against newer engines can fail with “client version … too old”).
 
 ## Quick start (local JVM)
 
 ```bash
-export JAVA_HOME=/path/to/jdk-21
+export JAVA_HOME=/path/to/jdk-17
 mvn -B clean verify
 java -jar target/bacp.jar
 ```
@@ -51,7 +52,7 @@ Grafana defaults: **`admin` / `admin`** (set `GF_SECURITY_ADMIN_*` in Compose).
 - **`bacp.custody.chains.*`**: JSON-RPC URLs for `ethereum`, `bsc`, `polygon` profiles (used by `BlockchainRpcRegistry` and `ChainLagMetricsJob`).
 - **`bacp.metrics.chain-poll-ms`**: scheduler interval for chain head gauges (`bacp_chain_head_block`).
 - **`bacp.ratelimit.*`**: defaults for `@RateLimit` (Redis Lua token bucket).
-- **`bacp.alert.*`**: mail / DingTalk / WeChat Work **stub** notifiers (log-only unless extended).
+- **`bacp.alert.*`**: SMTP mail, WeChat Work webhook, routing/throttle; DingTalk remains log-only unless extended.
 
 Copy `.env.example` when wiring CI or Compose overrides.
 
@@ -61,9 +62,15 @@ Copy `.env.example` when wiring CI or Compose overrides.
 mvn -B clean verify
 ```
 
-**Docker**: `TcAdminAndRiskIntegrationTest` uses Testcontainers (**MySQL 8** + **Redis 7**). Running `mvn verify` locally requires an available Docker daemon (GitHub Actions `ubuntu-latest` satisfies this).
+Default `verify` **skips** tests tagged **`docker`** (Testcontainers) so machines without Docker still pass CI locally. To run **everything**, including `TcAdminAndRiskIntegrationTest` (**MySQL 8** + **Redis 7** via Testcontainers):
 
-Unit and slice tests use **JUnit 5**, **Mockito**, and **standalone MockMvc** (admin controllers + `GlobalExceptionHandler`). Integration tests use **`@SpringBootTest`** + **`@AutoConfigureMockMvc`** + **`@WithMockUser`** with profiles `test` + `tc` (`application-tc.yml`, `AbstractTestcontainersIntegrationTest`).
+```bash
+mvn -B verify -Dsurefire.excludedGroups=
+```
+
+Use **Docker Engine / CLI 29.4.3+** (see Requirements). GitHub Actions runners ship a recent Docker; if you see API version errors, align your CLI with the daemon (`docker version`) or set **`DOCKER_API_VERSION`** to match the server.
+
+Unit and slice tests use **JUnit 5**, **Mockito**, and **standalone MockMvc** (admin controllers + `GlobalExceptionHandler`). Docker integration tests use **`AbstractTestcontainersIntegrationTest`** with profiles **`test`** + **`tc`** (`application-tc.yml`).
 
 ### JaCoCo: gate vs full
 
@@ -94,7 +101,7 @@ Maven `verify` generates two HTML bundles:
 
 ## CI
 
-GitHub Actions runs `mvn -B verify` on JDK 21 and uploads **both** JaCoCo HTML bundles: **`jacoco-report-gate`** and **`jacoco-report-full`** (see `.github/workflows/ci.yml`).
+GitHub Actions runs `mvn -B verify` on JDK 17 and uploads **both** JaCoCo HTML bundles: **`jacoco-report-gate`** and **`jacoco-report-full`** (see `.github/workflows/ci.yml`).
 
 ## License
 

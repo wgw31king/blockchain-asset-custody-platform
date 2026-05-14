@@ -9,9 +9,15 @@ import io.github.wahhh.bacp.common.result.ResultCode;
 import io.github.wahhh.bacp.dto.request.AssignPermissionsRequest;
 import io.github.wahhh.bacp.entity.SysRole;
 import io.github.wahhh.bacp.entity.SysRolePermission;
+import io.github.wahhh.bacp.config.openapi.OpenApiExamples;
 import io.github.wahhh.bacp.mapper.SysRoleMapper;
 import io.github.wahhh.bacp.mapper.SysRolePermissionMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,7 +38,9 @@ import java.util.List;
 /**
  * Admin role management.
  */
-@Tag(name = "Admin — Roles")
+@Tag(
+        name = "Admin — Roles",
+        description = "Role CRUD and permission assignment. Requires `role:*` + admin IP whitelist.")
 @RestController
 @RequestMapping("/api/v1/admin/roles")
 @RequiredArgsConstructor
@@ -44,19 +52,37 @@ public class RoleAdminController {
 
     private final PlatformTransactionManager transactionManager;
 
-    @Operation(summary = "Page roles")
+    @Operation(summary = "Page roles", description = "Paged role catalog sorted by id.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paged roles"),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @GetMapping
     @PreAuthorize("hasAuthority('role:query')")
     public Result<PageResult<SysRole>> page(
-            @RequestParam(defaultValue = "1") long current,
-            @RequestParam(defaultValue = "10") long size) {
+            @Parameter(description = "1-based page") @RequestParam(defaultValue = "1") long current,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") long size) {
         Page<SysRole> page = new Page<>(current, size);
         Page<SysRole> result =
                 sysRoleMapper.selectPage(page, Wrappers.<SysRole>lambdaQuery().orderByAsc(SysRole::getId));
         return Result.ok(PageResult.of(result));
     }
 
-    @Operation(summary = "Create role")
+    @Operation(summary = "Create role", description = "`roleCode` must be unique (HTTP 200 + code 409 on conflict).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Created role"),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @PostMapping
     @PreAuthorize("hasAuthority('role:create')")
     public Result<SysRole> create(@RequestBody SysRole body) {
@@ -73,9 +99,19 @@ public class RoleAdminController {
     }
 
     @Operation(summary = "Update role")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Updated role"),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('role:update')")
-    public Result<SysRole> update(@PathVariable Long id, @RequestBody SysRole body) {
+    public Result<SysRole> update(
+            @Parameter(description = "Role id") @PathVariable Long id, @RequestBody SysRole body) {
         SysRole existing = sysRoleMapper.selectById(id);
         if (existing == null) {
             throw new BizException(ResultCode.NOT_FOUND, "role not found");
@@ -95,17 +131,45 @@ public class RoleAdminController {
     }
 
     @Operation(summary = "Delete role (logical)")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    content =
+                            @Content(
+                                    examples = @ExampleObject(name = "Ok", value = OpenApiExamples.RES_OK_VOID))),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('role:delete')")
-    public Result<Void> delete(@PathVariable Long id) {
+    public Result<Void> delete(@Parameter(description = "Role id") @PathVariable Long id) {
         sysRoleMapper.deleteById(id);
         return Result.ok();
     }
 
-    @Operation(summary = "Replace role permissions")
+    @Operation(summary = "Replace role permissions", description = "Replaces permission links for the role.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    content =
+                            @Content(
+                                    examples = @ExampleObject(name = "Ok", value = OpenApiExamples.RES_OK_VOID))),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @PostMapping("/{id}/permissions")
     @PreAuthorize("hasAuthority('role:update')")
-    public Result<Void> assignPermissions(@PathVariable Long id, @RequestBody AssignPermissionsRequest body) {
+    public Result<Void> assignPermissions(
+            @Parameter(description = "Role id") @PathVariable Long id,
+            @RequestBody AssignPermissionsRequest body) {
         SysRole existing = sysRoleMapper.selectById(id);
         if (existing == null) {
             throw new BizException(ResultCode.NOT_FOUND, "role not found");

@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 #
-# Multi-stage build: Maven on Temurin 21 → slim JRE runtime with non-root user.
+# Multi-stage build: Maven on Temurin 17 → slim JRE runtime with non-root user.
 
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /build
 COPY pom.xml .
 COPY src ./src
 RUN mvn -B -DskipTests package
 
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \

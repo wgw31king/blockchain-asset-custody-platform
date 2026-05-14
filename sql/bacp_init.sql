@@ -174,6 +174,24 @@ CREATE TABLE IF NOT EXISTS t_tx (
 ) ENGINE=InnoDB;
 
 -- ========== Trade ==========
+CREATE TABLE IF NOT EXISTS t_symbol (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    symbol VARCHAR(64) NOT NULL,
+    base_currency_id BIGINT NOT NULL,
+    quote_currency_id BIGINT NOT NULL,
+    price_scale INT NOT NULL DEFAULT 8,
+    qty_scale INT NOT NULL DEFAULT 8,
+    min_qty DECIMAL(38,18) NOT NULL DEFAULT 0,
+    min_notional DECIMAL(38,18) NOT NULL DEFAULT 0,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_symbol (symbol),
+    CONSTRAINT fk_sym_base FOREIGN KEY (base_currency_id) REFERENCES t_currency (id),
+    CONSTRAINT fk_sym_quote FOREIGN KEY (quote_currency_id) REFERENCES t_currency (id)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS t_order (
     id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
@@ -183,11 +201,15 @@ CREATE TABLE IF NOT EXISTS t_order (
     price DECIMAL(38,18) DEFAULT NULL,
     quantity DECIMAL(38,18) NOT NULL,
     filled_quantity DECIMAL(38,18) NOT NULL DEFAULT 0,
-    status VARCHAR(32) NOT NULL DEFAULT 'OPEN',
+    frozen_quote_amount DECIMAL(38,18) NOT NULL DEFAULT 0 COMMENT 'Logical quote reserved for this order',
+    frozen_base_amount DECIMAL(38,18) NOT NULL DEFAULT 0 COMMENT 'Logical base reserved for this order',
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    expires_at DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted TINYINT NOT NULL DEFAULT 0,
     KEY idx_symbol_status (symbol, status),
+    KEY idx_status_expires (status, expires_at),
     CONSTRAINT fk_ord_user FOREIGN KEY (user_id) REFERENCES t_sys_user (id)
 ) ENGINE=InnoDB;
 
@@ -287,6 +309,13 @@ INSERT INTO t_currency (symbol, name, asset_type, chain_type, contract_address, 
 ('USDT', 'Tether USD', 'ERC20', 'ethereum', '0x0000000000000000000000000000000000000001', 6, 1, 0),
 ('MATIC', 'Polygon', 'NATIVE', 'polygon', NULL, 18, 1, 0)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+INSERT INTO t_symbol (symbol, base_currency_id, quote_currency_id, price_scale, qty_scale, min_qty, min_notional, enabled, deleted)
+SELECT 'ETH-USDT', b.id, q.id, 8, 8, 0.00000001, 0.00000001, 1, 0
+FROM t_currency b, t_currency q
+WHERE b.symbol = 'ETH' AND b.chain_type = 'ethereum' AND q.symbol = 'USDT' AND q.chain_type = 'ethereum'
+LIMIT 1
+ON DUPLICATE KEY UPDATE symbol = VALUES(symbol);
 
 -- ========== Seed chain nodes (testnet placeholders; replace in prod) ==========
 INSERT INTO t_chain_node (chain_type, node_name, rpc_url, ws_url, priority, enabled, deleted) VALUES

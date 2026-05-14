@@ -7,6 +7,7 @@ import io.github.wahhh.bacp.entity.SysUser;
 import io.github.wahhh.bacp.mapper.SysUserMapper;
 import io.github.wahhh.bacp.mapper.SysUserRoleMapper;
 import io.github.wahhh.bacp.testsupport.GlobalExceptionHandlerFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,6 +24,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -213,7 +215,7 @@ class UserAdminControllerWebTest {
         when(userMapper.selectById(5L)).thenReturn(existing);
 
         AssignRolesRequest req = new AssignRolesRequest();
-        req.setRoleIds(List.of(1L, null, 2L));
+        req.setRoleIds(java.util.Arrays.asList(1L, null, 2L));
 
         MockMvc mvc = mvc(userMapper, roleMapper, new BCryptPasswordEncoder(), txManager());
 
@@ -223,7 +225,7 @@ class UserAdminControllerWebTest {
                 .andExpect(status().isOk());
 
         verify(roleMapper).delete(any());
-        verify(roleMapper).insert(any());
+        verify(roleMapper, times(2)).insert(any());
     }
 
     private static MockMvc mvc(
@@ -231,7 +233,8 @@ class UserAdminControllerWebTest {
             SysUserRoleMapper roleMapper,
             PasswordEncoder encoder,
             PlatformTransactionManager tx) {
-        return MockMvcBuilders.standaloneSetup(new UserAdminController(userMapper, roleMapper, encoder, tx))
+        return MockMvcBuilders.standaloneSetup(
+                        new UserAdminController(userMapper, roleMapper, encoder, tx, new SimpleMeterRegistry()))
                 .setControllerAdvice(GlobalExceptionHandlerFactory.create())
                 .build();
     }

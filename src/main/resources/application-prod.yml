@@ -39,6 +39,11 @@ management:
   endpoint:
     health:
       show-details: never
+  # Lower sampling in production to control overhead; raise temporarily when debugging.
+  tracing:
+    enabled: true
+    sampling:
+      probability: 0.1
 
 logging:
   level:

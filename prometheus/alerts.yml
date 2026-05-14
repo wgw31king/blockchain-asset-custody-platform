@@ -95,3 +95,80 @@ groups:
         annotations:
           summary: "BACP elevated HTTP 4xx/5xx throughput"
           description: "Aggregate client/server error rate > 5 rps — correlate with logs."
+
+  # Connection pool pressure — requires Spring Boot Hikari metrics (management.metrics.enable.hikaricp).
+  - name: bacp-datasource
+    rules:
+      - alert: BacpHikariPendingConnections
+        expr: |
+          sum by (application, pool) (hikaricp_connections_pending) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP Hikari pending connections ({{ $labels.pool }})"
+          description: "Threads waiting for a connection >0 for 5m — increase pool size or reduce hold time."
+
+      - alert: BacpHikariConnectionTimeouts
+        expr: |
+          increase(hikaricp_connections_timeout_total[10m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "BACP Hikari connection acquire timeouts"
+          description: "Pool exhausted or DB unreachable — check RDS load and leak suspects."
+
+  # MyBatis SqlMetricsInterceptor — tune threshold vs bacp.metrics.sql-slow-threshold-ms.
+  - name: bacp-sql
+    rules:
+      - alert: BacpSqlSlowBurst
+        expr: |
+          sum(rate(bacp_sql_slow_total[5m])) by (application) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP slow SQL statements elevated"
+          description: "More than 0.5 slow mapper calls/s (bacp_sql_slow_total) — inspect mapper_id labels."
+
+  # On-chain deposit confirmation timer (single-notify deposits may register near-zero latency).
+  - name: bacp-onchain
+    rules:
+      - alert: BacpDepositConfirmationLatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, chain) (
+              rate(bacp_onchain_deposit_confirmation_seconds_bucket[15m])
+            )
+          ) > 600
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP deposit confirmation latency p95 high ({{ $labels.chain }})"
+          description: "p95 > 600s — RPC/indexer lag or custody webhook delays."
+
+  # bacp_disk_free_bytes — custom gauge; -1 means poll failure.
+  - name: bacp-host
+    rules:
+      - alert: BacpDiskFreeLow
+        expr: |
+          bacp_disk_free_bytes > 0 and bacp_disk_free_bytes < 1073741824
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "BACP disk free space low ({{ $labels.path }})"
+          description: "Usable space under 1GiB — rotate logs or expand volume."
+
+      - alert: BacpDiskMetricsBroken
+        expr: |
+          bacp_disk_free_bytes == -1
+        for: 15m
+        labels:
+          severity: info
+        annotations:
+          summary: "BACP disk gauge unreadable"
+          description: "bacp_disk_free_bytes stuck at -1 — path permission or FileStore error."

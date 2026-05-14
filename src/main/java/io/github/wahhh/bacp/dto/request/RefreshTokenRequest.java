@@ -12,6 +12,8 @@ import lombok.Data;
 public class RefreshTokenRequest {
 
     @NotBlank
-    @Schema(description = "Previously issued refresh JWT")
+    @Schema(
+            description = "Previously issued refresh JWT",
+            example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String refreshToken;
 }
