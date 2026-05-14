@@ -16,11 +16,13 @@ import io.github.wahhh.bacp.entity.SysUser;
 import io.github.wahhh.bacp.mapper.SysPermissionMapper;
 import io.github.wahhh.bacp.mapper.SysRoleMapper;
 import io.github.wahhh.bacp.mapper.SysUserMapper;
+import io.github.wahhh.bacp.monitor.metrics.UserActivityMetrics;
 import io.github.wahhh.bacp.service.AuthService;
 import io.jsonwebtoken.Claims;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,6 +57,8 @@ public class AuthServiceImpl implements AuthService {
     private final TokenBlacklistService tokenBlacklistService;
 
     private final MeterRegistry meterRegistry;
+
+    private final ObjectProvider<UserActivityMetrics> userActivityMetrics;
 
     /**
      * {@inheritDoc}
@@ -93,6 +97,7 @@ public class AuthServiceImpl implements AuthService {
         String access = jwtUtil.generate(user.getId(), user.getUsername(), perms, accessTtl);
         String refresh = jwtUtil.generateRefresh(user.getId(), user.getUsername(), refreshTtl);
         meterRegistry.counter("bacp_login_total", "result", "success").increment();
+        userActivityMetrics.ifAvailable(m -> m.recordSuccessfulLogin(user.getId()));
         return LoginResponse.builder()
                 .accessToken(access)
                 .refreshToken(refresh)

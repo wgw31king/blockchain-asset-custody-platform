@@ -45,16 +45,30 @@ management:
       show-details: when_authorized
       probes:
         enabled: true
+  # Distributed tracing: fills MDC traceId/spanId for JSON logs (sampling adjustable per env).
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
   metrics:
     tags:
       application: ${spring.application.name}
     distribution:
       percentiles-histogram:
         http.server.requests: true
+    # Expose JDBC pool (Hikari) counters/gauges as hikaricp_* on Prometheus scrape.
+    enable:
+      jdbc: true
+      hikaricp: true
   prometheus:
     metrics:
       export:
         enabled: true
+
+# Correlate log lines with active trace when propagation is enabled (Micrometer + Brave).
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{traceId:-},%X{spanId:-}] "
 
 springdoc:
   api-docs:
@@ -68,6 +82,16 @@ springdoc:
 bacp:
   metrics:
     chain-poll-ms: 30000
+    # bacp_sql_slow_total / bacp_sql_slow_seconds — statements exceeding this latency.
+    sql-slow-threshold-ms: 500
+    # bacp:metrics:dau:{yyyyMMdd} key TTL in Redis (HyperLogLog approximate unique logins per day).
+    dau-key-ttl-hours: 48
+    # bacp_user_active_daily_approx gauge refresh interval.
+    dau-refresh-ms: 60000
+    # bacp_disk_free_bytes — monitored mount/path (often "/" in containers).
+    disk-free-path: /
+    # Disk gauge poll interval (milliseconds).
+    disk-poll-ms: 60000
   security:
     jwt:
       secret: ${BACP_JWT_SECRET:dev-only-jwt-secret-please-change-in-production-environment-32+}
@@ -105,6 +129,13 @@ bacp:
     large-amount-threshold: 10000
     frequency-window-seconds: 60
     frequency-max-count: 20
+  trade:
+    lock-wait-ms: 200
+    lock-lease-ms: 5000
+    order-ttl-seconds: 86400
+    timeout-poll-ms: 30000
+    max-match-iterations: 200
+    fee-rate: "0"
   # Operational alerts: channels off by default; configure routing per AlertLevel when enabling.
   alert:
     mail:

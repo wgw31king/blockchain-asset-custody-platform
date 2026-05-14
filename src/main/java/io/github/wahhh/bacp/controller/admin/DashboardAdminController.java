@@ -7,8 +7,13 @@ import io.github.wahhh.bacp.entity.Balance;
 import io.github.wahhh.bacp.entity.SysUser;
 import io.github.wahhh.bacp.mapper.BalanceMapper;
 import io.github.wahhh.bacp.mapper.SysUserMapper;
+import io.github.wahhh.bacp.config.openapi.OpenApiExamples;
 import io.github.wahhh.bacp.mapper.TxRecordMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +29,9 @@ import java.util.Map;
 /**
  * Aggregated KPIs for admin dashboard.
  */
-@Tag(name = "Admin — Dashboard")
+@Tag(
+        name = "Admin — Dashboard",
+        description = "Aggregate KPIs (`dashboard:view`) + admin IP whitelist.")
 @RestController
 @RequestMapping("/api/v1/admin/dashboard")
 @RequiredArgsConstructor
@@ -36,7 +43,18 @@ public class DashboardAdminController {
 
     private final BalanceMapper balanceMapper;
 
-    @Operation(summary = "Dashboard KPI summary")
+    @Operation(
+            summary = "Dashboard KPI summary",
+            description = "usersTotal, txTotal, activeUsersToday, balancesSum (aggregated ledger exposure).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "KPI map"),
+            @ApiResponse(
+                    responseCode = "403",
+                    content =
+                            @Content(
+                                    examples =
+                                            @ExampleObject(name = "Forbidden", value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @GetMapping("/summary")
     @PreAuthorize("hasAuthority('dashboard:view')")
     public Result<Map<String, Object>> summary() {

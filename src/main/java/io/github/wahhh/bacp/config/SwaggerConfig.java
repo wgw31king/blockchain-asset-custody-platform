@@ -27,7 +27,24 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("Blockchain Asset Custody Platform API")
                         .version("v1")
-                        .description("BACP REST API — RBAC, custody, trading, risk, monitoring.")
+                        .description("""
+                                BACP REST API — JWT authentication, RBAC, custody, demo spot matching, risk, and ops \
+                                visibility.
+
+                                **Response envelope:** JSON bodies use `Result<T>` (`code`, `message`, `data`, \
+                                `timestamp`). Paginated admin lists use `PageResult<T>` inside `data`.
+
+                                **HTTP status vs business codes:** `BizException` is returned with **HTTP 200** and a \
+                                non-success `code` in the JSON body. Framework mapping uses real HTTP statuses for \
+                                validation failures (**400**), missing/invalid auth (**401**), `@PreAuthorize` denial \
+                                (**403**), rate limits (**429**), and uncaught errors (**500**).
+
+                                **Admin routes:** `/api/v1/admin/**` require both JWT authorities and client IP to match \
+                                `bacp.security.admin-ip-whitelist`.
+
+                                **Authentication:** send `Authorization: Bearer <accessToken>` except on `/api/v1/auth/login` \
+                                and `/api/v1/auth/refresh`.
+                                """)
                         .contact(new Contact().name("wahhh")))
                 .addSecurityItem(new SecurityRequirement().addList(schemeName))
                 .components(new Components().addSecuritySchemes(schemeName,

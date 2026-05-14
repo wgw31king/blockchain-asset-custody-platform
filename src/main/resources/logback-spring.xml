@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <property name="LOG_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{40} [%X{traceId:-}] - %msg%n"/>
+    <!-- Resolved from Spring environment for JSON "application" field. -->
+    <springProperty name="APP_NAME" scope="context" source="spring.application.name" defaultValue="bacp"/>
 
+    <!-- Human-readable pattern (dev console / optional prod console); includes trace correlation when present. -->
+    <!-- Plain level (no %clr) so Logback works without Spring Boot's ColorConverter on the classpath in minimal tests. -->
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{40} [%X{traceId:-},%X{spanId:-}] - %msg%n"/>
+
+    <!-- Console: plain text for local readability. -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -10,7 +16,102 @@
         </encoder>
     </appender>
 
-    <appender name="ROLLING" class="ch.qos.logback.core.rolling.RollingFileAppender">
+    <!-- JSON line encoder shared by rolling files — suitable for Loki/ELK; MDC carries traceId/spanId from Micrometer Brave. -->
+    <springProfile name="dev,prod">
+        <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <!-- Primary JSON log: INFO and above (INFO/WARN/ERROR). -->
+            <file>logs/bacp-json.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>INFO</level>
+            </filter>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <threadName/>
+                    <message/>
+                    <mdc/>
+                    <stackTrace/>
+                    <arguments/>
+                    <pattern>
+                        <pattern>
+                            {"application":"${APP_NAME}"}
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/archived/bacp-json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+                <totalSizeCap>5GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- WARN+ JSON — operations visibility without full INFO volume when tailing warnings only. -->
+        <appender name="JSON_WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/bacp-warn-json.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>WARN</level>
+            </filter>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <threadName/>
+                    <message/>
+                    <mdc/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {"application":"${APP_NAME}"}
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/archived/bacp-warn-json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>50MB</maxFileSize>
+                <maxHistory>45</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- ERROR-only JSON — incident triage and alerting pipelines. -->
+        <appender name="JSON_ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/bacp-error-json.log</file>
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>ERROR</level>
+            </filter>
+            <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+                <providers>
+                    <timestamp/>
+                    <logLevel/>
+                    <loggerName/>
+                    <threadName/>
+                    <message/>
+                    <mdc/>
+                    <stackTrace/>
+                    <pattern>
+                        <pattern>
+                            {"application":"${APP_NAME}"}
+                        </pattern>
+                    </pattern>
+                </providers>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/archived/bacp-error-json.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+                <maxFileSize>30MB</maxFileSize>
+                <maxHistory>60</maxHistory>
+                <totalSizeCap>2GB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+    </springProfile>
+
+    <!-- Legacy plain rolling file (optional retention for operators who grep non-JSON). -->
+    <appender name="ROLLING_TEXT" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>logs/bacp.log</file>
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
@@ -19,41 +120,50 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>logs/archived/bacp.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
-            <maxHistory>30</maxHistory>
-            <totalSizeCap>5GB</totalSizeCap>
+            <maxHistory>14</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
         </rollingPolicy>
     </appender>
 
-    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/bacp-error.log</file>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>ERROR</level>
-        </filter>
-        <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
-            <charset>UTF-8</charset>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/archived/bacp-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
-            <maxFileSize>50MB</maxFileSize>
-            <maxHistory>60</maxHistory>
-        </rollingPolicy>
-    </appender>
+    <!-- OpenAPI export / doc generation (Maven -Pgenerate-api-docs). Console only. -->
+    <springProfile name="docgen">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+    </springProfile>
+
+    <!-- Unit/integration tests: no file appenders (avoids writing under CI working dirs). -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+    </springProfile>
 
     <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="STDOUT"/>
-            <appender-ref ref="ROLLING"/>
-            <appender-ref ref="ERROR_FILE"/>
+            <appender-ref ref="JSON_FILE"/>
+            <appender-ref ref="JSON_WARN_FILE"/>
+            <appender-ref ref="JSON_ERROR_FILE"/>
+            <appender-ref ref="ROLLING_TEXT"/>
         </root>
     </springProfile>
 
     <springProfile name="prod">
         <root level="WARN">
             <appender-ref ref="STDOUT"/>
-            <appender-ref ref="ROLLING"/>
-            <appender-ref ref="ERROR_FILE"/>
+            <appender-ref ref="JSON_FILE"/>
+            <appender-ref ref="JSON_WARN_FILE"/>
+            <appender-ref ref="JSON_ERROR_FILE"/>
+            <appender-ref ref="ROLLING_TEXT"/>
         </root>
         <logger name="io.github.wahhh.bacp" level="INFO"/>
+    </springProfile>
+
+    <!-- Default when no profile matches (e.g. tests): console only. -->
+    <springProfile name="default">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
     </springProfile>
 </configuration>

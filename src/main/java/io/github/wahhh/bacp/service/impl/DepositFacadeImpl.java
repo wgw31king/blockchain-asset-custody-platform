@@ -51,6 +51,11 @@ public class DepositFacadeImpl implements DepositFacade {
         if (Boolean.FALSE.equals(fresh)) {
             throw new BizException(ResultCode.DUPLICATE_REQUEST);
         }
+        String chainNorm = body.getChainType().toLowerCase();
+        String seenKey = CacheKeys.METRICS_DEPOSIT_FIRST_SEEN + body.getTxHash();
+        // First processing time for bacp_onchain_deposit_confirmation_seconds (single-notify flow may show ~0ms).
+        stringRedisTemplate.opsForValue().setIfAbsent(
+                seenKey, String.valueOf(System.currentTimeMillis()), Duration.ofDays(7));
         int confirmations = body.getConfirmations() == null ? 0 : body.getConfirmations();
         TxStatus status = confirmations >= custodyProperties.getDefaultConfirmations()
                 ? TxStatus.CONFIRMED
@@ -58,7 +63,7 @@ public class DepositFacadeImpl implements DepositFacade {
         TxRecord tx = new TxRecord();
         tx.setUserId(body.getUserId());
         tx.setCurrencyId(body.getCurrencyId());
-        tx.setChainType(body.getChainType().toLowerCase());
+        tx.setChainType(chainNorm);
         tx.setDirection(TxDirection.DEPOSIT.name());
         tx.setTxHash(body.getTxHash());
         tx.setFromAddress(body.getFromAddress());
@@ -74,10 +79,16 @@ public class DepositFacadeImpl implements DepositFacade {
         }
         if (status == TxStatus.CONFIRMED) {
             balanceService.credit(body.getUserId(), body.getCurrencyId(), body.getAmount());
+            String firstSeen = stringRedisTemplate.opsForValue().get(seenKey);
+            long startMs = firstSeen != null ? Long.parseLong(firstSeen) : System.currentTimeMillis();
+            long elapsed = Math.max(0L, System.currentTimeMillis() - startMs);
+            // Prometheus: bacp_onchain_deposit_confirmation_seconds_bucket|_sum|_count
+            meterRegistry.timer("bacp_onchain_deposit_confirmation_seconds", "chain", chainNorm)
+                    .record(Duration.ofMillis(elapsed));
         }
         meterRegistry.counter("bacp_tx_total",
                 "direction", "DEPOSIT",
-                "chain", body.getChainType(),
+                "chain", chainNorm,
                 "status", status.name()).increment();
     }
 }

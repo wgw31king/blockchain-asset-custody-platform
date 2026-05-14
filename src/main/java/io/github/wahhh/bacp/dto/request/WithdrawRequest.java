@@ -16,19 +16,19 @@ import java.math.BigDecimal;
 public class WithdrawRequest {
 
     @NotNull
-    @Schema(description = "Currency row id")
+    @Schema(description = "Currency row id", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long currencyId;
 
     @NotBlank
-    @Schema(description = "Destination address")
+    @Schema(description = "Destination address", example = "0xRecipient...")
     private String toAddress;
 
     @NotNull
     @DecimalMin("0")
-    @Schema(description = "Amount to send")
+    @Schema(description = "Amount to send", example = "0.01")
     private BigDecimal amount;
 
     @NotBlank
-    @Schema(description = "ethereum | bsc | polygon")
+    @Schema(description = "Chain profile", example = "ethereum", allowableValues = {"ethereum", "bsc", "polygon"})
     private String chainType;
 }

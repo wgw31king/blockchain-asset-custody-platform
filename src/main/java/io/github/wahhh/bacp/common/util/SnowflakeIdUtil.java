@@ -36,7 +36,7 @@ public final class SnowflakeIdUtil {
 
     private static final AtomicLong SEQUENCE = new AtomicLong(0L);
 
-    private static volatile long LAST_TS = -1L;
+    private static volatile long lastTs = -1L;
 
     static {
         long hash = hostHash();
@@ -54,19 +54,19 @@ public final class SnowflakeIdUtil {
      */
     public static synchronized long nextId() {
         long ts = System.currentTimeMillis();
-        if (ts < LAST_TS) {
+        if (ts < lastTs) {
             throw new IllegalStateException("clock moved backwards");
         }
         long seq = SEQUENCE.get();
-        if (ts == LAST_TS) {
+        if (ts == lastTs) {
             seq = (seq + 1) & SEQUENCE_MASK;
             if (seq == 0) {
-                ts = waitNextMillis(LAST_TS);
+                ts = waitNextMillis(lastTs);
             }
         } else {
             seq = 0L;
         }
-        LAST_TS = ts;
+        lastTs = ts;
         SEQUENCE.set(seq);
         return ((ts - EPOCH) << TIMESTAMP_SHIFT)
                 | (DATACENTER_ID << DATACENTER_SHIFT)

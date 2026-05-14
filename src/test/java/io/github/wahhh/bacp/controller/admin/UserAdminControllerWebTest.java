@@ -7,6 +7,7 @@ import io.github.wahhh.bacp.entity.SysUser;
 import io.github.wahhh.bacp.mapper.SysUserMapper;
 import io.github.wahhh.bacp.mapper.SysUserRoleMapper;
 import io.github.wahhh.bacp.testsupport.GlobalExceptionHandlerFactory;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -232,7 +233,8 @@ class UserAdminControllerWebTest {
             SysUserRoleMapper roleMapper,
             PasswordEncoder encoder,
             PlatformTransactionManager tx) {
-        return MockMvcBuilders.standaloneSetup(new UserAdminController(userMapper, roleMapper, encoder, tx))
+        return MockMvcBuilders.standaloneSetup(
+                        new UserAdminController(userMapper, roleMapper, encoder, tx, new SimpleMeterRegistry()))
                 .setControllerAdvice(GlobalExceptionHandlerFactory.create())
                 .build();
     }

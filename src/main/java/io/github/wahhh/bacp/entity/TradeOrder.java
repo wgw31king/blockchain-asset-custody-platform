@@ -6,9 +6,10 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
- * Spot order resting or matched in the demo matching engine.
+ * Spot order resting or matched in the production matching engine.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -32,5 +33,14 @@ public class TradeOrder extends BaseEntity {
     @TableField("filled_quantity")
     private BigDecimal filledQuantity;
 
+    @TableField("frozen_quote_amount")
+    private BigDecimal frozenQuoteAmount;
+
+    @TableField("frozen_base_amount")
+    private BigDecimal frozenBaseAmount;
+
     private String status;
+
+    @TableField("expires_at")
+    private LocalDateTime expiresAt;
 }

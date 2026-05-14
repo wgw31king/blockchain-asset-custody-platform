@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +57,7 @@ public class ChainLagMetricsJob {
             if (holder == null) {
                 continue;
             }
+            long startNs = System.nanoTime();
             try {
                 var ethBlock = blockchainRpcRegistry.web3j(chain)
                         .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
@@ -65,6 +67,10 @@ public class ChainLagMetricsJob {
                 }
             } catch (Exception ex) {
                 log.debug("Skip chain head poll chain={} reason={}", chain, ex.getMessage());
+            } finally {
+                // Prometheus: bacp_chain_rpc_call_seconds_* — custodial RPC latency (not on-chain confirm time).
+                meterRegistry.timer("bacp_chain_rpc_call_seconds", "chain", chain, "method", "eth_blockNumber")
+                        .record(Duration.ofNanos(System.nanoTime() - startNs));
             }
         }
     }
