@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Spring configuration & wiring (beans, filters, security): noise vs value -->
+    <Match>
+        <Package name="~io\.github\.wahhh\.bacp\.config(\..*)?"/>
+    </Match>
+</FindBugsFilter>

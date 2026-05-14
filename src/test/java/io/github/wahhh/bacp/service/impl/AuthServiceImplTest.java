@@ -14,11 +14,13 @@ import io.github.wahhh.bacp.entity.SysUser;
 import io.github.wahhh.bacp.mapper.SysPermissionMapper;
 import io.github.wahhh.bacp.mapper.SysRoleMapper;
 import io.github.wahhh.bacp.mapper.SysUserMapper;
+import io.github.wahhh.bacp.monitor.metrics.UserActivityMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -66,6 +68,9 @@ class AuthServiceImplTest {
     @Mock
     private TokenBlacklistService tokenBlacklistService;
 
+    @Mock
+    private ObjectProvider<UserActivityMetrics> userActivityMetrics;
+
     private final JwtUtil jwtUtil = new JwtUtil(SECRET, "bacp-test", "bacp-api-test");
 
     private final BacpSecurityProperties securityProperties = new BacpSecurityProperties();
@@ -79,8 +84,10 @@ class AuthServiceImplTest {
         securityProperties.getJwt().setAccessTokenTtlSeconds(3600);
         securityProperties.getJwt().setRefreshTokenTtlSeconds(604800);
         lenient().when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(userActivityMetrics.getIfAvailable()).thenReturn(null);
         authService = new AuthServiceImpl(sysUserMapper, sysPermissionMapper, sysRoleMapper,
-                passwordEncoder, jwtUtil, securityProperties, stringRedisTemplate, tokenBlacklistService, meterRegistry);
+                passwordEncoder, jwtUtil, securityProperties, stringRedisTemplate, tokenBlacklistService,
+                meterRegistry, userActivityMetrics);
     }
 
     @Test

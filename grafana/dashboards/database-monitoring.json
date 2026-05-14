@@ -1,0 +1,285 @@
+{
+  "uid": "bacp-database-monitoring",
+  "title": "BACP / Database monitoring",
+  "tags": [
+    "bacp",
+    "database",
+    "sql"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Hikari connections active / idle / pending",
+      "description": "Requires Hikari DataSource metrics. Pending >0 sustained matches BacpHikariPendingConnections.",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "bacp-prom"
+      },
+      "targets": [
+        {
+          "expr": "sum by (pool) (hikaricp_connections_active)",
+          "legendFormat": "active {{pool}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (pool) (hikaricp_connections_idle)",
+          "legendFormat": "idle {{pool}}",
+          "refId": "B"
+        },
+        {
+          "expr": "sum by (pool) (hikaricp_connections_pending)",
+          "legendFormat": "pending {{pool}}",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 14,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Hikari connection acquire / timeouts",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "bacp-prom"
+      },
+      "targets": [
+        {
+          "expr": "sum by (pool) (rate(hikaricp_connections_acquire_seconds_sum[5m]))",
+          "legendFormat": "acquire_s/s {{pool}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (pool) (rate(hikaricp_connections_timeout_total[5m]))",
+          "legendFormat": "timeouts/s {{pool}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 16,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefId",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ops"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Mapper SQL QPS (bacp_sql_queries_total)",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "bacp-prom"
+      },
+      "targets": [
+        {
+          "expr": "topk(12, sum by (mapper_id) (rate(bacp_sql_queries_total[5m])))",
+          "legendFormat": "{{mapper_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Slow SQL rate (bacp_sql_slow_total)",
+      "description": "Threshold from bacp.metrics.sql-slow-threshold-ms.",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "bacp-prom"
+      },
+      "targets": [
+        {
+          "expr": "topk(10, sum by (mapper_id) (rate(bacp_sql_slow_total[5m])))",
+          "legendFormat": "{{mapper_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.5
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Slow SQL latency p95 (bacp_sql_slow_seconds)",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "bacp-prom"
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(\n  0.95,\n  sum by (le, mapper_id) (\n    rate(bacp_sql_slow_seconds_bucket[5m])\n  )\n)",
+          "legendFormat": "{{mapper_id}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ package io.github.wahhh.bacp.controller.custody;
 
 import io.github.wahhh.bacp.common.result.Result;
 import io.github.wahhh.bacp.common.web.SecurityHelper;
+import io.github.wahhh.bacp.config.openapi.OpenApiExamples;
 import io.github.wahhh.bacp.dto.request.DepositNotifyRequest;
 import io.github.wahhh.bacp.dto.request.WithdrawRequest;
 import io.github.wahhh.bacp.entity.Balance;
@@ -11,6 +12,11 @@ import io.github.wahhh.bacp.service.DepositFacade;
 import io.github.wahhh.bacp.service.WalletService;
 import io.github.wahhh.bacp.service.WithdrawService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +34,10 @@ import java.util.List;
 /**
  * Custody REST endpoints (wallet / balances / deposits / withdrawals).
  */
-@Tag(name = "Custody")
+@Tag(
+        name = "Custody",
+        description = "Balances, wallets, withdrawals for authenticated users; deposit notify for trusted indexers "
+                + "(`custody:deposit:notify`).")
 @RestController
 @RequestMapping("/api/v1/custody")
 @RequiredArgsConstructor
@@ -42,30 +51,73 @@ public class CustodyController {
 
     private final WalletService walletService;
 
-    /**
-     * Accepts canonical deposit notifications from trusted indexers.
-     *
-     * @param idempotencyKey optional idempotency header
-     * @param body           payload
-     * @return empty body
-     */
-    @Operation(summary = "Notify confirmed deposit")
+    @Operation(
+            summary = "Notify confirmed deposit",
+            description =
+                    "Idempotent deposit notification from an indexer. Requires authority `custody:deposit:notify`. "
+                            + "Duplicates may return `code` 2002.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Accepted",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(name = "Ok", value = OpenApiExamples.RES_OK_VOID))),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Missing JWT",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(
+                                                    name = "Unauthorized",
+                                                    value = OpenApiExamples.RES_UNAUTHORIZED))),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Insufficient authority or signing/IP rules",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(
+                                                    name = "Forbidden",
+                                                    value = OpenApiExamples.RES_FORBIDDEN)))
+    })
     @PostMapping("/deposits/notify")
     @PreAuthorize("hasAuthority('custody:deposit:notify')")
     public Result<Void> notifyDeposit(
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @Parameter(description = "Optional idempotency key for safe retries")
+                    @RequestHeader(value = "Idempotency-Key", required = false)
+                    String idempotencyKey,
             @Valid @RequestBody DepositNotifyRequest body) {
         depositFacade.handleDeposit(idempotencyKey, body);
         return Result.ok();
     }
 
-    /**
-     * Submits withdraw intent for async signing pipeline.
-     *
-     * @param body withdraw payload
-     * @return tx id
-     */
-    @Operation(summary = "Submit withdrawal")
+    @Operation(
+            summary = "Submit withdrawal",
+            description =
+                    "Creates withdrawal intent after balance and risk checks. Requires `custody:withdraw`. May return "
+                            + "risk or balance related business codes (HTTP 200 body).")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Withdraw record id in `data`",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Not authenticated",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(
+                                                    name = "Unauthorized",
+                                                    value = OpenApiExamples.RES_UNAUTHORIZED)))
+    })
     @PostMapping("/withdraw")
     @PreAuthorize("hasAuthority('custody:withdraw')")
     public Result<Long> withdraw(@Valid @RequestBody WithdrawRequest body) {
@@ -73,27 +125,47 @@ public class CustodyController {
         return Result.ok(withdrawService.submit(uid, body));
     }
 
-    /**
-     * Lists balances for authenticated user.
-     *
-     * @return balances
-     */
-    @Operation(summary = "List balances")
+    @Operation(summary = "List balances", description = "All balance rows for the authenticated user.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Balance list", content = @Content(mediaType = "application/json")),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Not authenticated",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(
+                                                    name = "Unauthorized",
+                                                    value = OpenApiExamples.RES_UNAUTHORIZED)))
+    })
     @GetMapping("/balances")
     public Result<List<Balance>> balances() {
         Long uid = SecurityHelper.currentUserIdOrThrow();
         return Result.ok(balanceService.list(uid));
     }
 
-    /**
-     * Ensures custodial wallet exists for chain profile.
-     *
-     * @param chainProfile ethereum | bsc | polygon
-     * @return wallet row without private key
-     */
-    @Operation(summary = "Ensure wallet address")
+    @Operation(
+            summary = "Ensure wallet address",
+            description =
+                    "Creates custodial wallet for `chainProfile` if missing (`ethereum`, `bsc`, `polygon`). "
+                            + "Does not return private key material.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Wallet row", content = @Content(mediaType = "application/json")),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Not authenticated",
+                    content =
+                            @Content(
+                                    mediaType = "application/json",
+                                    examples =
+                                            @ExampleObject(
+                                                    name = "Unauthorized",
+                                                    value = OpenApiExamples.RES_UNAUTHORIZED)))
+    })
     @PostMapping("/wallets/{chainProfile}/ensure")
-    public Result<Wallet> ensureWallet(@PathVariable String chainProfile) {
+    public Result<Wallet> ensureWallet(
+            @Parameter(description = "Chain profile key", example = "ethereum") @PathVariable String chainProfile) {
         Long uid = SecurityHelper.currentUserIdOrThrow();
         return Result.ok(walletService.ensureWallet(uid, chainProfile));
     }

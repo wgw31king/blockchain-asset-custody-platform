@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Micrometer timed aspect for {@code @Timed} support on beans.
  */
-@Configuration
+@Configuration("bacpMicrometerTimedConfiguration")
 public class PrometheusConfig {
 
     /**

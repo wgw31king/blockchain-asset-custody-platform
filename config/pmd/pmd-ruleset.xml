@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="bacp-pmd"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+    <description>PMD: best practices, code style, design, performance</description>
+
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="UnusedPrivateField"/>
+        <!-- SLF4J parameterized messages are cheap; guards add noise without material gain here. -->
+        <exclude name="GuardLogStatement"/>
+    </rule>
+    <rule ref="category/java/codestyle.xml">
+        <!-- @Slf4j uses field name "log"; not an ALL_CAPS constant. -->
+        <exclude name="FieldNamingConventions"/>
+        <!-- Default JUnit 5 pattern rejects stepNN_name style; allow underscores in test names. -->
+        <exclude name="MethodNamingConventions"/>
+    </rule>
+    <rule ref="category/java/codestyle.xml/MethodNamingConventions">
+        <properties>
+            <property name="junit5TestPattern" value="[a-z][a-zA-Z0-9_]*"/>
+        </properties>
+    </rule>
+    <rule ref="category/java/design.xml"/>
+    <rule ref="category/java/performance.xml"/>
+
+    <exclude-pattern>.*/config/.*</exclude-pattern>
+</ruleset>

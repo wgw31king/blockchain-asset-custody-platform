@@ -16,30 +16,32 @@ import java.math.BigDecimal;
 public class DepositNotifyRequest {
 
     @NotNull
-    @Schema(description = "Custody user id")
+    @Schema(description = "Custody user id", example = "2", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long userId;
 
     @NotNull
-    @Schema(description = "Currency row id")
+    @Schema(description = "Currency row id (`t_currency.id`)", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long currencyId;
 
     @NotBlank
-    @Schema(description = "ethereum | bsc | polygon")
+    @Schema(description = "Chain profile", example = "ethereum", allowableValues = {"ethereum", "bsc", "polygon"})
     private String chainType;
 
     @NotBlank
-    @Schema(description = "On-chain transaction hash")
+    @Schema(description = "On-chain transaction hash", example = "0xabc...")
     private String txHash;
 
+    @Schema(description = "Source address (optional)", example = "0xFrom...")
     private String fromAddress;
 
+    @Schema(description = "Destination deposit address (optional)", example = "0xTo...")
     private String toAddress;
 
     @NotNull
     @DecimalMin("0")
-    @Schema(description = "Amount credited")
+    @Schema(description = "Amount credited (decimal)", example = "0.5")
     private BigDecimal amount;
 
-    @Schema(description = "Confirmations observed")
+    @Schema(description = "Confirmations observed", example = "12")
     private Integer confirmations;
 }

@@ -14,7 +14,10 @@ import java.time.LocalDateTime;
  * Common persistence columns with optimistic-friendly timestamps.
  */
 @Data
-public abstract class BaseEntity implements Serializable {
+public class BaseEntity implements Serializable {
+
+    protected BaseEntity() {
+    }
 
     @TableId(type = IdType.AUTO)
     private Long id;

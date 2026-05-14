@@ -6,7 +6,6 @@ import io.github.wahhh.bacp.mapper.WalletMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -18,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
 
 @ExtendWith(MockitoExtension.class)
 class WalletServiceImplTest {
@@ -56,7 +56,12 @@ class WalletServiceImplTest {
     @Test
     void provisionsNewWalletWithNormalizedChainAndDerivationPath() {
         when(walletMapper.selectOne(any())).thenReturn(null);
-        when(walletMapper.insert(any(Wallet.class))).thenReturn(1);
+        doAnswer(inv -> {
+            Wallet arg = inv.getArgument(0);
+            assertEquals("bsc", arg.getChainType());
+            assertNotNull(arg.getEncryptedPrivateKey());
+            return 1;
+        }).when(walletMapper).insert(any(Wallet.class));
 
         Wallet out = walletService.ensureWallet(2L, "BSC");
         assertNull(out.getEncryptedPrivateKey());
@@ -65,10 +70,7 @@ class WalletServiceImplTest {
         assertEquals("bsc", out.getChainType());
         assertEquals("m/44'/60'/0'/0/2", out.getDerivationPath());
 
-        ArgumentCaptor<Wallet> cap = ArgumentCaptor.forClass(Wallet.class);
-        verify(walletMapper).insert(cap.capture());
-        assertEquals("bsc", cap.getValue().getChainType());
-        assertNotNull(cap.getValue().getEncryptedPrivateKey());
+        verify(walletMapper).insert(any(Wallet.class));
     }
 
     /**

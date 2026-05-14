@@ -1,5 +1,6 @@
 package io.github.wahhh.bacp.integration;
 
+import org.junit.jupiter.api.Tag;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -13,7 +14,11 @@ import org.testcontainers.utility.DockerImageName;
 
 /**
  * Shared MySQL 8 + Redis 7 containers for Spring Boot integration tests.
+ *
+ * <p>Tagged {@code docker}: excluded from default {@code mvn verify} when Docker is unavailable;
+ * run full suite with {@code mvn verify -Dsurefire.excludedGroups=}.</p>
  */
+@Tag("docker")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles({"test", "tc"})
 @Testcontainers

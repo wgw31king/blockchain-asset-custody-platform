@@ -1,0 +1,45 @@
+# Profile `docgen` — H2 in-memory DB for OpenAPI export (Maven -Pgenerate-api-docs).
+# Requires Redis and RabbitMQ reachable at the hosts below (e.g. `docker compose up -d redis rabbitmq`).
+spring:
+  data:
+    redis:
+      host: ${BACP_REDIS_HOST:127.0.0.1}
+      port: ${BACP_REDIS_PORT:6379}
+  rabbitmq:
+    host: ${BACP_RMQ_HOST:127.0.0.1}
+    port: ${BACP_RMQ_PORT:5672}
+    listener:
+      simple:
+        auto-startup: false
+  datasource:
+    url: jdbc:h2:mem:bacp_docgen;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-docgen.sql
+
+mybatis-plus:
+  configuration:
+    database-id: h2
+
+logging:
+  level:
+    root: WARN
+    io.github.wahhh.bacp: INFO
+
+bacp:
+  security:
+    jwt:
+      secret: docgen-jwt-secret-must-be-at-least-32-bytes-long!!
+      access-token-ttl-seconds: 3600
+      refresh-token-ttl-seconds: 604800
+      issuer: bacp-docgen
+      audience: bacp-api-docgen
+    admin-ip-whitelist: 127.0.0.1,0:0:0:0:0:0:0:1
+    request-signing:
+      enabled: false
+  crypto:
+    master-key: docgen-master-key-32bytes-minimum!!
